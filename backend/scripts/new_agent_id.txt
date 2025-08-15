@@ -1,0 +1,4 @@
+New Agent ID: asst_qRkSnHGxQQTNxde2V6JWTv2f
+Created: 2025-08-05 14:28:23.591656
+Model: gpt-4o
+Functions: 6

@@ -1,0 +1,41 @@
+# FastAPI and ASGI server
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+
+# Database
+sqlalchemy==2.0.23
+psycopg2-binary==2.9.9  # PostgreSQL adapter
+alembic==1.12.1  # Database migrations
+
+# Authentication and Security
+pyjwt==2.8.0
+python-multipart==0.0.6
+
+# Data validation
+pydantic==2.5.0
+email-validator==2.1.0
+
+# Environment and configuration
+python-dotenv==1.0.0
+
+# Database drivers
+psycopg2-binary==2.9.9  # PostgreSQL adapter (already included above)
+
+# Development and testing
+pytest==7.4.3
+pytest-asyncio==0.21.1
+httpx==0.25.2  # For testing FastAPI
+
+# Logging and monitoring
+structlog==23.2.0
+
+# CORS support (included in FastAPI but explicit for clarity)
+# fastapi already includes starlette which has CORS support
+
+# Azure AI integration
+azure-ai-projects==1.0.0b4
+azure-identity==1.15.0
+azure-core==1.29.5
+
+# Optional: For production deployment
+gunicorn==21.2.0

@@ -1,0 +1,165 @@
+# ===== NODE.JS / FRONTEND =====
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Dependencies
+node_modules/
+frontend/node_modules/
+
+# Build outputs
+dist/
+dist-ssr/
+frontend/dist/
+build/
+*.local
+
+# ===== PYTHON / BACKEND =====
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environments
+venv/
+env/
+ENV/
+backend/venv/
+backend/env/
+
+# Python distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# ===== DATABASE FILES =====
+# SQLite databases
+*.db
+*.sqlite
+*.sqlite3
+elevate_ai.db
+backend/elevate_ai.db
+
+# ===== ENVIRONMENT & CONFIG =====
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Keep example env file
+!.env.example
+
+# ===== EDITOR & IDE =====
+# VSCode
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+
+# IntelliJ / PyCharm
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# Other editors
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*~
+
+# ===== TESTING & COVERAGE =====
+# Coverage reports
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# ===== TEMPORARY & SYSTEM FILES =====
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# ===== PROJECT SPECIFIC =====
+# Test and debug files
+test_*.py
+debug_*.py
+*_test_response.txt
+*_debug.py
+simple_test.py
+populate_*.py
+create_*.py
+delete_*.py
+check_*.py
+fix_*.py
+restart_*.py
+
+# Documentation that might contain sensitive info
+ActionDocumentation.txt
+api_test_response.txt
+azure_ai_integration_test_report.txt
+optimize_endpoint_test_response.txt
+
+# Alembic migration files (keep the directory structure but ignore specific migrations)
+backend/alembic/versions/*.py
+!backend/alembic/versions/__init__.py
+
+# ===== LOGS & MONITORING =====
+# Application logs
+*.log
+logs/
+backend/logs/
+
+# ===== SECURITY =====
+# API keys and secrets (additional safety)
+*secret*
+*key*
+*token*
+*password*
+!*example*
+!*template*
+!*sample*

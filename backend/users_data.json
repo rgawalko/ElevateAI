@@ -1,0 +1,12 @@
+[
+  {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "name": "Demo User",
+    "email": "demo@elevateai.com",
+    "is_active": true,
+    "is_verified": true,
+    "timezone": "UTC",
+    "created_at": "2025-08-08T19:28:52.086651",
+    "last_login": null
+  }
+]

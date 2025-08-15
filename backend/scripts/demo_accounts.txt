@@ -1,0 +1,10 @@
+ELEVATE AI - DEMO ACCOUNTS
+==================================================
+
+Use these accounts to test the Elevate AI application:
+
+Notes:
+- All demo accounts are pre-verified and active
+- Passwords follow the format: demo[number]!
+- Each user has different timezone settings for testing
+- Use any of these accounts to test login and features
