@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 
 interface LoginFormData {
   email: string;
@@ -156,6 +156,19 @@ export const Login: React.FC = () => {
             </button>
           </div>
         </form>
+
+        {/* Register Link */}
+        <div className="text-center">
+          <p className="text-sm text-gray-600">
+            Don't have an account?{' '}
+            <Link
+              to="/register"
+              className="font-medium text-indigo-600 hover:text-indigo-500 transition-colors duration-200"
+            >
+              Sign up here
+            </Link>
+          </p>
+        </div>
 
         {/* Footer */}
         <div className="text-center">

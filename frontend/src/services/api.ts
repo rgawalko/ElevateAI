@@ -105,10 +105,24 @@ class ApiClient {
     });
   }
 
-  async register(userData: { name: string; email: string; password: string }): Promise<ApiResponse<{ user: User; token: string }>> {
+  async register(userData: { name: string; email: string; password: string; timezone?: string }): Promise<ApiResponse<{ user: User; token: string }>> {
     return this.request('/auth/register', {
       method: 'POST',
       body: JSON.stringify(userData),
+    });
+  }
+
+  async validatePassword(password: string): Promise<ApiResponse<{ is_valid: boolean; strength: string; errors: string[] }>> {
+    return this.request('/auth/validate-password', {
+      method: 'POST',
+      body: JSON.stringify({ password }),
+    });
+  }
+
+  async checkEmailAvailability(email: string): Promise<ApiResponse<{ available: boolean; valid_format: boolean; message: string }>> {
+    return this.request('/auth/check-email', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
     });
   }
 
@@ -324,6 +338,8 @@ export const apiClient = new ApiClient();
 export const authService = {
   login: apiClient.login.bind(apiClient),
   register: apiClient.register.bind(apiClient),
+  validatePassword: apiClient.validatePassword.bind(apiClient),
+  checkEmailAvailability: apiClient.checkEmailAvailability.bind(apiClient),
   logout: apiClient.logout.bind(apiClient),
   getCurrentUser: apiClient.getCurrentUser.bind(apiClient),
 };

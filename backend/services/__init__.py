@@ -13,6 +13,8 @@ Services provide:
 """
 
 from .user_service import UserService
+from .register_service import RegisterService
+from .chronotype_service import ChronotypeService
 from .activity_service import ActivityService
 from .schedule_service import ScheduleService
 from .insight_service import InsightService
@@ -22,7 +24,9 @@ from .ai_service import AIService
 
 __all__ = [
     "UserService",
-    "ActivityService", 
+    "RegisterService",
+    "ChronotypeService",
+    "ActivityService",
     "ScheduleService",
     "InsightService",
     "GoalService",

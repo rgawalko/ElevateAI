@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, DateTime, Boolean, Text
+from sqlalchemy import Column, String, DateTime, Boolean, Text, JSON
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from database.database import Base
@@ -29,6 +29,9 @@ class User(Base):
     timezone = Column(String(50), default="UTC")
     date_format = Column(String(20), default="YYYY-MM-DD")
     time_format = Column(String(10), default="24h")  # "12h" or "24h"
+
+    # Chronotype Quiz Results
+    chronotype_data = Column(JSON, nullable=True)  # Stores quiz results and classification
 
     # Timestamps
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))

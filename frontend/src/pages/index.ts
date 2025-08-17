@@ -6,4 +6,5 @@ export { ScheduleCreator } from './ScheduleCreator';
 export { Goals } from './Goals';
 export { Chatbot } from './Chatbot';
 export { Login } from './Login';
+export { Register } from './Register';
 export { Typography } from './Typography';

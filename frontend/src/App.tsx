@@ -1,7 +1,8 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Layout } from './components';
-import { Dashboard, Activities, Schedule, ScheduleCreator, Insights, Goals, Chatbot, Login, Typography } from './pages';
+import { Dashboard, Activities, Schedule, ScheduleCreator, Insights, Goals, Chatbot, Login, Register, Typography } from './pages';
+import { ChronotypeFlow } from './components/ChronotypeFlow';
 
 // Simple authentication check
 const isAuthenticated = () => {
@@ -21,6 +22,10 @@ function App() {
       <Routes>
         {/* Public routes */}
         <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+
+        {/* Chronotype quiz route (accessible after registration) */}
+        <Route path="/chronotype-quiz" element={<ChronotypeFlow />} />
 
         {/* Protected routes */}
         <Route path="/" element={<Navigate to="/dashboard" replace />} />

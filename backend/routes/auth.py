@@ -9,7 +9,7 @@ from typing import Dict, Any
 
 from database.utils import get_db
 from schemas.user import UserCreate, UserLogin, UserOut
-from services import UserService
+from services import UserService, RegisterService
 from models import User
 from utils.auth import create_token_pair, verify_token
 
@@ -20,33 +20,75 @@ security = HTTPBearer()
 @router.post("/register", response_model=Dict[str, Any])
 async def register(user_data: UserCreate, db: Session = Depends(get_db)):
     """
-    Register a new user account
+    Register a new user account with comprehensive validation
     """
-    user_service = UserService(db)
+    register_service = RegisterService(db)
 
-    # Check if user already exists
-    existing_user = user_service.get_user_by_email(user_data.email)
-    if existing_user:
+    # Validate registration data
+    validation = register_service.validate_registration_data(user_data)
+    if not validation["is_valid"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered"
+            detail=validation["errors"][0] if validation["errors"] else "Registration validation failed"
         )
 
-    # Create user (service handles password validation and hashing)
-    db_user = user_service.create_user(user_data.model_dump())
+    # Create user account
+    db_user = register_service.create_user_account(user_data)
     if not db_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Failed to create user. Please check your input."
+            detail="Failed to create user account. Please try again."
         )
 
     # Create tokens
     tokens = create_token_pair(str(db_user.id), db_user.email)
 
-    return {
+    response_data = {
         "message": "User registered successfully",
         "user": UserOut.model_validate(db_user),
         "tokens": tokens
+    }
+
+    # Add warnings if any
+    if validation.get("warnings"):
+        response_data["warnings"] = validation["warnings"]
+
+    return response_data
+
+
+@router.post("/validate-password", response_model=Dict[str, Any])
+async def validate_password(password_data: Dict[str, str], db: Session = Depends(get_db)):
+    """
+    Validate password strength for real-time feedback
+    """
+    password = password_data.get("password", "")
+    register_service = RegisterService(db)
+
+    validation = register_service.validate_password_strength(password)
+
+    return {
+        "is_valid": validation["is_valid"],
+        "strength": validation["strength"],
+        "errors": validation["errors"]
+    }
+
+
+@router.post("/check-email", response_model=Dict[str, Any])
+async def check_email_availability(email_data: Dict[str, str], db: Session = Depends(get_db)):
+    """
+    Check if email is available for registration
+    """
+    email = email_data.get("email", "")
+    register_service = RegisterService(db)
+
+    is_available = register_service.check_email_availability(email)
+    is_valid_format = register_service.validate_email_format(email)
+
+    return {
+        "available": is_available,
+        "valid_format": is_valid_format,
+        "message": "Email is available" if is_available and is_valid_format else
+                  "Invalid email format" if not is_valid_format else "Email already registered"
     }
 
 

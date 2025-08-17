@@ -1,6 +1,6 @@
 from pydantic import BaseModel, EmailStr, Field
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Dict, Any
 from uuid import UUID
 
 
@@ -38,6 +38,7 @@ class UserOut(BaseModel):
     timezone: str
     date_format: str
     time_format: str
+    chronotype_data: Optional[Dict[str, Any]]
     created_at: datetime
     updated_at: datetime
     last_login: Optional[datetime]
@@ -58,6 +59,7 @@ class UserProfile(BaseModel):
     timezone: str
     date_format: str
     time_format: str
+    chronotype_data: Optional[Dict[str, Any]]
     created_at: datetime
     updated_at: datetime
     last_login: Optional[datetime]

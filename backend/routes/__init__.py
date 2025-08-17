@@ -9,6 +9,7 @@ from .schedules import router as schedules_router
 from .insights import router as insights_router
 from .goals import router as goals_router
 from .chatbot import router as chatbot_router
+from .chronotype import router as chronotype_router
 from .home import router as home_router
 from .test_routes import router as test_router
 
@@ -20,6 +21,7 @@ __all__ = [
     "insights_router",
     "goals_router",
     "chatbot_router",
+    "chronotype_router",
     "home_router",
     "test_router"
 ]
