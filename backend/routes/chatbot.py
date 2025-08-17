@@ -145,14 +145,25 @@ async def send_message(
             sender_id=user_id
         )
 
-        # Send message to Azure OpenAI with official function calling support
-        result = chatbot_service.send_message_with_functions_official(
-            thread_id=chat.azure_thread_id,
-            message=chat_request.message,
-            db_session=db,
-            user_id=user_id,
-            max_wait_seconds=30
-        )
+        # Determine which agent to use based on message content
+        if chatbot_service.should_use_eps_agent(chat_request.message):
+            # Use EPS insights agent for productivity-related queries
+            result = chatbot_service.send_message_with_eps_insights(
+                thread_id=chat.azure_thread_id,
+                message=chat_request.message,
+                db_session=db,
+                user_id=user_id,
+                max_wait_seconds=30
+            )
+        else:
+            # Use regular chatbot for general queries
+            result = chatbot_service.send_message_with_functions_official(
+                thread_id=chat.azure_thread_id,
+                message=chat_request.message,
+                db_session=db,
+                user_id=user_id,
+                max_wait_seconds=30
+            )
 
         if result["success"]:
             # Add AI response to database

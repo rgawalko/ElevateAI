@@ -104,6 +104,22 @@ export const ScheduleCreator: React.FC = () => {
       totalWorkTime?: number;
       totalBreakTime?: number;
       recommendations?: string[];
+      productivityBreakdown?: {
+        focus_score?: number;
+        sleep_score?: number;
+        breaks_score?: number;
+        chronotype_score?: number;
+        overall_score?: number;
+        interpretation?: string;
+        recommendations?: string[];
+        metrics?: {
+          deep_work_minutes?: number;
+          context_switches?: number;
+          break_minutes?: number;
+          focus_minutes?: number;
+          chronotype_alignment?: number;
+        };
+      };
     };
     optimizations?: string[];
   }>({ show: false });
@@ -471,6 +487,23 @@ export const ScheduleCreator: React.FC = () => {
           optimizations.push(`📋 ${result.schedule.scheduledActivities.length} activities optimally scheduled`);
         }
 
+        // Add detailed productivity insights if available
+        if (summary.productivityBreakdown) {
+          const breakdown = summary.productivityBreakdown;
+          if (breakdown.focus_score >= 80) {
+            optimizations.push(`🧠 Excellent focus optimization (${breakdown.focus_score}/100)`);
+          }
+          if (breakdown.breaks_score >= 80) {
+            optimizations.push(`⏸️ Optimal break pattern achieved (${breakdown.breaks_score}/100)`);
+          }
+          if (breakdown.chronotype_score >= 80) {
+            optimizations.push(`⏰ Perfect chronotype alignment (${breakdown.chronotype_score}/100)`);
+          }
+          if (breakdown.interpretation) {
+            optimizations.push(`📊 ${breakdown.interpretation}`);
+          }
+        }
+
         // Add recommendations from AI
         if (summary.recommendations && summary.recommendations.length > 0) {
           optimizations.push(...summary.recommendations.map((rec: string) => `💡 ${rec}`));
@@ -818,21 +851,51 @@ export const ScheduleCreator: React.FC = () => {
 
             {/* Scores */}
             {optimizationResult.summary && (
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                {optimizationResult.summary.productivityScore !== undefined && (
-                  <div className="bg-blue-50 p-3 rounded-lg text-center">
-                    <div className="text-2xl font-bold text-blue-600">
-                      {optimizationResult.summary.productivityScore}%
+              <div className="space-y-4 mb-4">
+                {/* Main Scores */}
+                <div className="grid grid-cols-2 gap-4">
+                  {optimizationResult.summary.productivityScore !== undefined && (
+                    <div className="bg-blue-50 p-3 rounded-lg text-center">
+                      <div className="text-2xl font-bold text-blue-600">
+                        {optimizationResult.summary.productivityScore}%
+                      </div>
+                      <div className="text-sm text-blue-800 font-medium">EPS Score</div>
+                      <div className="text-xs text-blue-600 mt-1">Evidence-based Productivity</div>
                     </div>
-                    <div className="text-sm text-blue-800 font-medium">Productivity Score</div>
-                  </div>
-                )}
-                {optimizationResult.summary.balanceScore !== undefined && (
-                  <div className="bg-green-50 p-3 rounded-lg text-center">
-                    <div className="text-2xl font-bold text-green-600">
-                      {optimizationResult.summary.balanceScore}%
+                  )}
+                  {optimizationResult.summary.balanceScore !== undefined && (
+                    <div className="bg-green-50 p-3 rounded-lg text-center">
+                      <div className="text-2xl font-bold text-green-600">
+                        {optimizationResult.summary.balanceScore}%
+                      </div>
+                      <div className="text-sm text-green-800 font-medium">Balance Score</div>
+                      <div className="text-xs text-green-600 mt-1">Work-Life Balance</div>
                     </div>
-                    <div className="text-sm text-green-800 font-medium">Balance Score</div>
+                  )}
+                </div>
+
+                {/* Detailed Productivity Breakdown */}
+                {optimizationResult.summary.productivityBreakdown && (
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <h4 className="text-sm font-medium text-gray-800 mb-2">📊 Productivity Breakdown</h4>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">🧠 Focus:</span>
+                        <span className="font-medium">{Math.round(optimizationResult.summary.productivityBreakdown.focus_score || 0)}/100</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">😴 Sleep:</span>
+                        <span className="font-medium">{Math.round(optimizationResult.summary.productivityBreakdown.sleep_score || 0)}/100</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">⏸️ Breaks:</span>
+                        <span className="font-medium">{Math.round(optimizationResult.summary.productivityBreakdown.breaks_score || 0)}/100</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">⏰ Timing:</span>
+                        <span className="font-medium">{Math.round(optimizationResult.summary.productivityBreakdown.chronotype_score || 0)}/100</span>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>

@@ -5,7 +5,7 @@ from typing import Dict, List, Any, Optional
 from azure.ai.projects import AIProjectClient
 from azure.identity import DefaultAzureCredential
 from azure.ai.agents.models import ListSortOrder, RunStatus, FunctionTool
-from services.chatbot_tools import user_functions, set_function_context
+from services.chatbot_tools import user_functions, set_function_context, get_eps_insights_agent
 
 logger = logging.getLogger(__name__)
 
@@ -468,3 +468,81 @@ class AzureChatbotService:
         except Exception as e:
             logger.error(f"❌ Error executing function {function_name}: {e}")
             return {"error": str(e)}
+
+    def send_message_with_eps_insights(
+        self,
+        thread_id: str,
+        message: str,
+        db_session,
+        user_id: str,
+        max_wait_seconds: int = 30
+    ) -> Dict[str, Any]:
+        """
+        Send a message using the specialized EPS insights agent.
+
+        This method uses a dedicated AI agent trained on Evidence-Based Productivity Score
+        concepts to provide scientifically-backed productivity insights.
+
+        Args:
+            thread_id: Azure thread ID
+            message: User message
+            db_session: Database session for data access
+            user_id: User ID for personalized insights
+            max_wait_seconds: Maximum time to wait for response
+
+        Returns:
+            Dict containing the response and metadata
+        """
+        try:
+            logger.info(f"🧠 Sending message to EPS insights agent: {message[:100]}...")
+
+            # Get the EPS insights agent
+            eps_agent = get_eps_insights_agent()
+
+            # Generate EPS insights using the specialized agent
+            result = eps_agent.generate_eps_insights(message, db_session, user_id)
+
+            if result.get("success"):
+                return {
+                    "success": True,
+                    "response": result["insights"],
+                    "thread_id": result.get("thread_id", thread_id),
+                    "agent_type": "eps_insights",
+                    "methodology": result.get("methodology", "Evidence-Based Productivity Score"),
+                    "agent_id": result.get("agent_id")
+                }
+            else:
+                # Fallback to regular chatbot if EPS agent fails
+                logger.warning("EPS agent failed, falling back to regular chatbot")
+                return self.send_message_with_functions_official(
+                    thread_id, message, db_session, user_id, max_wait_seconds
+                )
+
+        except Exception as e:
+            logger.error(f"❌ Error in EPS insights agent: {e}")
+            # Fallback to regular chatbot
+            return self.send_message_with_functions_official(
+                thread_id, message, db_session, user_id, max_wait_seconds
+            )
+
+    def should_use_eps_agent(self, message: str) -> bool:
+        """
+        Determine if the message should be handled by the EPS insights agent.
+
+        Args:
+            message: User message to analyze
+
+        Returns:
+            True if EPS agent should handle the message
+        """
+        eps_keywords = [
+            "productivity", "insights", "analysis", "score", "performance",
+            "focus", "deep work", "concentration", "distraction", "context switch",
+            "sleep", "rest", "energy", "fatigue", "tired",
+            "break", "pause", "rest", "recovery", "burnout",
+            "schedule", "timing", "chronotype", "peak", "optimal",
+            "eps", "evidence", "research", "scientific"
+        ]
+
+        message_lower = message.lower()
+        return any(keyword in message_lower for keyword in eps_keywords)

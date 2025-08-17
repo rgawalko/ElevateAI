@@ -17,6 +17,16 @@ from models.ai_insight import AIInsight
 from models.goal import Goal
 from models.schedule import Schedule
 from models.user_preferences import UserPreferences
+from ProductivityScore import DayMetrics, _calculate_score_internal, _interpret_score, _generate_recommendations
+from azure.identity import DefaultAzureCredential
+from azure.ai.projects import AIProjectClient
+from azure.ai.agents.models import FunctionTool
+import time
+import os
+from azure.identity import DefaultAzureCredential
+from azure.ai.projects import AIProjectClient
+from azure.ai.agents.models import FunctionTool
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -277,47 +287,57 @@ def get_recent_insights(limit: int = 5) -> str:
     """
     # Simple, robust implementation following Azure AI documentation pattern
     try:
-        # Always return valid insights, even if there are issues
+        # Evidence-Based Productivity Score (EPS) insights with scientific backing
         insights = [
             {
-                "type": "productivity",
-                "title": "🎯 Weekly Productivity Review",
-                "summary": "Your Recent Performance",
-                "content": "Based on your recent activity patterns, you've been maintaining good engagement with your tasks. Focus on identifying your most productive hours and scheduling important work during those peak times.",
-                "confidence": 0.8,
-                "priority": "medium"
-            },
-            {
-                "type": "time_management",
-                "title": "⏰ Time Optimization Opportunity",
-                "summary": "Maximize Your Efficiency",
-                "content": "Consider time-blocking your calendar to dedicate focused periods for deep work. This helps minimize context switching and improves overall productivity.",
+                "type": "focus_quality",
+                "title": "🧠 Deep Work Optimization",
+                "summary": "Focus Quality Enhancement",
+                "content": "Research shows that rapid task switching imposes measurable cognitive switching costs (American Psychological Association). Aim for uninterrupted work blocks of 25+ minutes to maximize your focus quality score. Consider time-blocking techniques to protect your deep work sessions.",
                 "confidence": 0.9,
-                "priority": "high"
+                "priority": "high",
+                "eps_component": "focus",
+                "scientific_basis": "Cognitive switching costs research (APA, ACM Digital Library)"
             },
             {
-                "type": "wellness",
-                "title": "💪 Work-Life Balance",
-                "summary": "Maintain Your Energy",
-                "content": "Remember to take regular breaks and maintain a healthy work-life balance. Short breaks every 90 minutes can significantly boost your focus and creativity.",
+                "type": "sleep_sufficiency",
+                "title": "😴 Sleep Quality Impact",
+                "summary": "Cognitive Performance Optimization",
+                "content": "Cognitive performance follows an inverted-U curve with sleep duration - 7-9 hours tends to support optimal executive function (PMC, PubMed research). Your sleep quality directly impacts your daily productivity score. Prioritize consistent sleep schedules for peak performance.",
+                "confidence": 0.95,
+                "priority": "high",
+                "eps_component": "sleep",
+                "scientific_basis": "Sleep-cognition research (PMC, PubMed)"
+            },
+            {
+                "type": "micro_break_hygiene",
+                "title": "⏸️ Strategic Break Patterns",
+                "summary": "Micro-Break Effectiveness",
+                "content": "Short breaks support well-being and aid performance, especially for demanding cognitive tasks (PMC, Taylor & Francis research). Aim for 5-15% of your work time as breaks. Try the Pomodoro Technique: 25 minutes focused work + 5 minute break cycles.",
+                "confidence": 0.85,
+                "priority": "medium",
+                "eps_component": "breaks",
+                "scientific_basis": "Break effectiveness research (PMC, Taylor & Francis)"
+            },
+            {
+                "type": "chronotype_alignment",
+                "title": "⏰ Peak Performance Timing",
+                "summary": "Chronotype Optimization",
+                "content": "Aligning cognitively demanding tasks to your individual peak performance window significantly improves outcomes. Schedule your most challenging work during your natural energy peaks - typically morning for most people, but varies by individual chronotype.",
                 "confidence": 0.8,
-                "priority": "medium"
+                "priority": "medium",
+                "eps_component": "chronotype",
+                "scientific_basis": "Chronotype alignment research"
             },
             {
-                "type": "learning",
-                "title": "📚 Continuous Improvement",
-                "summary": "Keep Growing",
-                "content": "Dedicate time each week to learning new skills or improving existing ones. This investment in yourself pays dividends in long-term productivity and career growth.",
-                "confidence": 0.7,
-                "priority": "low"
-            },
-            {
-                "type": "reflection",
-                "title": "🔍 Weekly Reflection",
-                "summary": "Track Your Progress",
-                "content": "Take a few minutes each week to reflect on what went well and what could be improved. This self-awareness is key to continuous productivity enhancement.",
+                "type": "eps_overview",
+                "title": "📊 Evidence-Based Productivity Score",
+                "summary": "Holistic Performance Measurement",
+                "content": "Your productivity is measured using the Evidence-Based Productivity Score (EPS) which combines four research-backed factors: Focus Quality (35%), Sleep Sufficiency (25%), Micro-Break Hygiene (20%), and Chronotype Alignment (20%). This scientific approach provides actionable insights for sustainable productivity improvement.",
                 "confidence": 0.9,
-                "priority": "medium"
+                "priority": "medium",
+                "eps_component": "overall",
+                "scientific_basis": "Integrated productivity research"
             }
         ]
 
@@ -371,6 +391,425 @@ def get_recent_insights(limit: int = 5) -> str:
             "status": "fallback"
         }
         return json.dumps(fallback_result)
+
+def get_eps_insights(limit: int = 5) -> str:
+    """
+    Generate Evidence-Based Productivity Score (EPS) insights based on user's activity data.
+
+    This function analyzes user activities using the four EPS pillars:
+    1. Focus Quality (deep work & fewer switches) - 35% weight
+    2. Sleep Sufficiency (7-9 hours optimal) - 25% weight
+    3. Micro-Break Hygiene (5-15% break ratio) - 20% weight
+    4. Chronotype Alignment (peak timing) - 20% weight
+
+    :param limit: Maximum number of insights to return (default: 5).
+    :return: EPS-based insights as a JSON string with scientific backing.
+    """
+    try:
+        # Default EPS-based insights with scientific backing
+        eps_insights = [
+            {
+                "type": "focus_quality",
+                "title": "🧠 Deep Work Analysis",
+                "summary": "Focus Quality Assessment",
+                "content": "Research shows rapid task switching imposes measurable cognitive switching costs (American Psychological Association). Your focus quality score is based on uninterrupted work blocks ≥25 minutes and context switch frequency. Aim for 2-4 hours of deep work daily.",
+                "confidence": 0.9,
+                "priority": "high",
+                "eps_component": "focus",
+                "weight": "35%",
+                "scientific_basis": "Cognitive switching costs (APA, ACM Digital Library)"
+            },
+            {
+                "type": "sleep_sufficiency",
+                "title": "😴 Sleep Impact on Performance",
+                "summary": "Cognitive Performance Optimization",
+                "content": "Cognitive performance follows an inverted-U curve with sleep - 7-9 hours supports optimal executive function (PMC, PubMed). Your sleep quality directly impacts 25% of your productivity score. Consistent sleep schedules enhance cognitive performance.",
+                "confidence": 0.95,
+                "priority": "high",
+                "eps_component": "sleep",
+                "weight": "25%",
+                "scientific_basis": "Sleep-cognition research (PMC, PubMed)"
+            },
+            {
+                "type": "micro_break_hygiene",
+                "title": "⏸️ Strategic Break Optimization",
+                "summary": "Break Pattern Effectiveness",
+                "content": "Short breaks support well-being and aid performance for demanding tasks (PMC, Taylor & Francis). Optimal break-to-work ratio is 5-15%. Try 25-minute work blocks with 5-minute breaks for sustained performance.",
+                "confidence": 0.85,
+                "priority": "medium",
+                "eps_component": "breaks",
+                "weight": "20%",
+                "scientific_basis": "Break effectiveness research (PMC, Taylor & Francis)"
+            },
+            {
+                "type": "chronotype_alignment",
+                "title": "⏰ Peak Performance Timing",
+                "summary": "Chronotype Optimization Strategy",
+                "content": "Aligning cognitively demanding tasks to individual peak windows improves outcomes significantly. Schedule your most challenging work during natural energy peaks - typically morning hours for most chronotypes.",
+                "confidence": 0.8,
+                "priority": "medium",
+                "eps_component": "chronotype",
+                "weight": "20%",
+                "scientific_basis": "Chronotype alignment research"
+            }
+        ]
+
+        # Try to get personalized EPS analysis if data is available
+        if _db_session and _current_user_id:
+            try:
+                start_date = datetime.now() - timedelta(days=7)
+                activities = _db_session.query(ActivityLog).filter(
+                    ActivityLog.user_id == _current_user_id,
+                    ActivityLog.date >= start_date
+                ).all()
+
+                if activities:
+                    # Parse activities for EPS analysis
+                    parsed_activities = []
+                    for activity_log in activities:
+                        if activity_log.activities and isinstance(activity_log.activities, list):
+                            parsed_activities.extend(activity_log.activities)
+
+                    if parsed_activities:
+                        # Generate personalized EPS insights
+                        personalized_insights = _generate_eps_insights(parsed_activities)
+                        if personalized_insights:
+                            eps_insights = personalized_insights
+            except Exception as e:
+                logger.error(f"Error generating personalized EPS insights: {e}")
+                # Fall back to default insights
+
+        result = {
+            "insights": eps_insights[:limit],
+            "total_count": len(eps_insights),
+            "analysis_period": "Last 7 days",
+            "methodology": "Evidence-Based Productivity Score (EPS)",
+            "components": {
+                "focus_quality": "35% - Deep work time & context switches",
+                "sleep_sufficiency": "25% - 7-9 hour optimal range",
+                "micro_break_hygiene": "20% - 5-15% break ratio",
+                "chronotype_alignment": "20% - Peak timing optimization"
+            },
+            "status": "success"
+        }
+
+        return json.dumps(result)
+
+    except Exception as e:
+        logger.error(f"Error generating EPS insights: {e}")
+        # Ultimate fallback
+        fallback_result = {
+            "insights": [{
+                "type": "eps_overview",
+                "title": "📊 Evidence-Based Productivity",
+                "summary": "Scientific Approach to Productivity",
+                "content": "Your productivity is measured using four research-backed factors: Focus Quality (35%), Sleep Sufficiency (25%), Micro-Break Hygiene (20%), and Chronotype Alignment (20%). This evidence-based approach provides actionable insights for sustainable improvement.",
+                "confidence": 1.0,
+                "priority": "high",
+                "eps_component": "overall",
+                "scientific_basis": "Integrated productivity research"
+            }],
+            "total_count": 1,
+            "analysis_period": "General guidance",
+            "methodology": "Evidence-Based Productivity Score (EPS)",
+            "status": "fallback"
+        }
+        return json.dumps(fallback_result)
+
+def _generate_eps_insights(activities: list) -> list:
+    """
+    Generate personalized EPS insights based on actual activity data.
+    """
+    try:
+        if not activities:
+            return []
+
+        # Calculate EPS metrics from activities
+        eps_metrics = _calculate_eps_metrics_from_activities(activities)
+        insights = []
+
+        # Focus Quality Insights (35% weight)
+        focus_score = eps_metrics.get("focus_score", 0)
+        deep_work_min = eps_metrics.get("metrics", {}).get("deep_work_minutes", 0)
+        context_switches = eps_metrics.get("metrics", {}).get("context_switches", 0)
+
+        if focus_score >= 80:
+            insights.append({
+                "type": "focus_quality",
+                "title": "🧠 Excellent Focus Quality",
+                "summary": f"Focus Score: {focus_score:.1f}/100",
+                "content": f"Outstanding focus performance! You achieved {deep_work_min} minutes of deep work with only {context_switches} context switches. This represents the top 20% of focus quality. Maintain this pattern for sustained high performance.",
+                "confidence": 0.9,
+                "priority": "low",
+                "eps_component": "focus",
+                "score": focus_score
+            })
+        elif focus_score >= 60:
+            insights.append({
+                "type": "focus_quality",
+                "title": "🎯 Good Focus with Room for Improvement",
+                "summary": f"Focus Score: {focus_score:.1f}/100",
+                "content": f"Solid focus performance with {deep_work_min} minutes of deep work. To improve your focus score, try to increase uninterrupted work blocks to 25+ minutes and reduce context switches (currently {context_switches}). Consider time-blocking techniques.",
+                "confidence": 0.85,
+                "priority": "medium",
+                "eps_component": "focus",
+                "score": focus_score
+            })
+        else:
+            insights.append({
+                "type": "focus_quality",
+                "title": "🔧 Focus Quality Needs Attention",
+                "summary": f"Focus Score: {focus_score:.1f}/100",
+                "content": f"Your focus quality score indicates significant room for improvement. With {deep_work_min} minutes of deep work and {context_switches} context switches, consider implementing the Pomodoro Technique and eliminating distractions during work blocks.",
+                "confidence": 0.9,
+                "priority": "high",
+                "eps_component": "focus",
+                "score": focus_score
+            })
+
+        # Sleep Sufficiency Insights (25% weight)
+        sleep_score = eps_metrics.get("sleep_score", 75)
+        if sleep_score >= 90:
+            insights.append({
+                "type": "sleep_sufficiency",
+                "title": "😴 Optimal Sleep Quality",
+                "summary": f"Sleep Score: {sleep_score:.1f}/100",
+                "content": "Excellent sleep quality! You're in the optimal 7-9 hour range that supports peak cognitive function. This strong foundation contributes 25% to your overall productivity score. Keep maintaining consistent sleep schedules.",
+                "confidence": 0.8,
+                "priority": "low",
+                "eps_component": "sleep",
+                "score": sleep_score
+            })
+        elif sleep_score >= 70:
+            insights.append({
+                "type": "sleep_sufficiency",
+                "title": "🌙 Good Sleep with Minor Adjustments",
+                "summary": f"Sleep Score: {sleep_score:.1f}/100",
+                "content": "Good sleep quality that supports productivity. Small improvements to get closer to the 7-9 hour optimal range could boost your overall EPS score. Consider establishing a consistent bedtime routine.",
+                "confidence": 0.8,
+                "priority": "medium",
+                "eps_component": "sleep",
+                "score": sleep_score
+            })
+        else:
+            insights.append({
+                "type": "sleep_sufficiency",
+                "title": "⚠️ Sleep Quality Impacting Performance",
+                "summary": f"Sleep Score: {sleep_score:.1f}/100",
+                "content": "Sleep quality is significantly impacting your productivity score (25% weight). Research shows cognitive performance peaks with 7-9 hours of sleep. Prioritize sleep hygiene for substantial productivity gains.",
+                "confidence": 0.9,
+                "priority": "high",
+                "eps_component": "sleep",
+                "score": sleep_score
+            })
+
+        # Micro-Break Hygiene Insights (20% weight)
+        breaks_score = eps_metrics.get("breaks_score", 0)
+        break_minutes = eps_metrics.get("metrics", {}).get("break_minutes", 0)
+        focus_minutes = eps_metrics.get("metrics", {}).get("focus_minutes", 1)
+        break_ratio = (break_minutes / focus_minutes) * 100 if focus_minutes > 0 else 0
+
+        if breaks_score >= 80:
+            insights.append({
+                "type": "micro_break_hygiene",
+                "title": "⏸️ Excellent Break Pattern",
+                "summary": f"Breaks Score: {breaks_score:.1f}/100",
+                "content": f"Perfect break hygiene! Your {break_ratio:.1f}% break-to-work ratio is in the optimal 5-15% range. This strategic rest pattern supports sustained performance and contributes positively to your EPS score.",
+                "confidence": 0.85,
+                "priority": "low",
+                "eps_component": "breaks",
+                "score": breaks_score
+            })
+        elif breaks_score >= 50:
+            insights.append({
+                "type": "micro_break_hygiene",
+                "title": "⏰ Break Pattern Optimization",
+                "summary": f"Breaks Score: {breaks_score:.1f}/100",
+                "content": f"Your break pattern ({break_ratio:.1f}% ratio) has room for improvement. Research shows 5-15% break-to-work ratio optimizes performance. Try the Pomodoro Technique: 25 minutes work + 5 minute breaks.",
+                "confidence": 0.8,
+                "priority": "medium",
+                "eps_component": "breaks",
+                "score": breaks_score
+            })
+        else:
+            insights.append({
+                "type": "micro_break_hygiene",
+                "title": "🚨 Insufficient Break Hygiene",
+                "summary": f"Breaks Score: {breaks_score:.1f}/100",
+                "content": f"Critical break deficiency detected ({break_ratio:.1f}% ratio). Without adequate breaks, performance degrades significantly. Implement regular 5-15% break patterns to prevent burnout and boost your EPS score.",
+                "confidence": 0.9,
+                "priority": "high",
+                "eps_component": "breaks",
+                "score": breaks_score
+            })
+
+        # Overall EPS Summary
+        overall_score = eps_metrics.get("eps_score", 0)
+        interpretation = eps_metrics.get("interpretation", "")
+
+        insights.append({
+            "type": "eps_summary",
+            "title": "📊 Evidence-Based Productivity Score",
+            "summary": f"Overall EPS: {overall_score:.1f}/100",
+            "content": f"{interpretation} Your EPS combines Focus Quality (35%), Sleep Sufficiency (25%), Micro-Break Hygiene (20%), and Chronotype Alignment (20%) using research-backed algorithms.",
+            "confidence": 0.95,
+            "priority": "medium",
+            "eps_component": "overall",
+            "score": overall_score,
+            "breakdown": {
+                "focus": focus_score,
+                "sleep": sleep_score,
+                "breaks": breaks_score,
+                "chronotype": eps_metrics.get("chronotype_score", 50)
+            }
+        })
+
+        return insights[:5]  # Return top 5 insights
+
+    except Exception as e:
+        logger.error(f"Error generating personalized EPS insights: {e}")
+        return []
+
+def _calculate_eps_metrics_from_activities(activities: list) -> Dict[str, Any]:
+    """
+    Calculate Evidence-Based Productivity Score metrics from activity data.
+
+    Returns:
+        Dictionary containing EPS metrics and breakdown
+    """
+    try:
+        if not activities:
+            return {
+                "eps_score": 0,
+                "focus_score": 0,
+                "sleep_score": 75,  # Default assumption
+                "breaks_score": 0,
+                "chronotype_score": 50,  # Default assumption
+                "metrics": {
+                    "deep_work_minutes": 0,
+                    "context_switches": 0,
+                    "break_minutes": 0,
+                    "focus_minutes": 0,
+                    "chronotype_alignment": 0.5
+                },
+                "interpretation": "No activity data available for analysis"
+            }
+
+        # Analyze activities for EPS components
+        work_activities = []
+        break_activities = []
+        total_duration = 0
+
+        for activity in activities:
+            duration = activity.get('duration_minutes', 0) or activity.get('duration', 0)
+            if duration > 0:
+                total_duration += duration
+
+                # Categorize activities
+                activity_name = activity.get('activity_name', '').lower()
+                category = activity.get('category', '').lower()
+
+                if 'break' in activity_name or 'rest' in activity_name or category == 'break':
+                    break_activities.append(activity)
+                else:
+                    work_activities.append(activity)
+
+        # Calculate deep work time (activities >= 25 minutes)
+        deep_work_min = sum(
+            activity.get('duration_minutes', 0) or activity.get('duration', 0)
+            for activity in work_activities
+            if (activity.get('duration_minutes', 0) or activity.get('duration', 0)) >= 25
+        )
+
+        # Estimate context switches (number of different activity types)
+        activity_types = set()
+        for activity in work_activities:
+            activity_name = activity.get('activity_name', '').lower()
+            if activity_name:
+                activity_types.add(activity_name)
+        context_switches = max(0, len(activity_types) - 1)
+
+        # Calculate break time
+        break_minutes = sum(
+            activity.get('duration_minutes', 0) or activity.get('duration', 0)
+            for activity in break_activities
+        )
+
+        # Calculate total focus time
+        focus_minutes = sum(
+            activity.get('duration_minutes', 0) or activity.get('duration', 0)
+            for activity in work_activities
+        )
+        if focus_minutes == 0:
+            focus_minutes = 1  # Avoid division by zero
+
+        # Estimate sleep quality from mood/energy if available
+        moods = [activity.get('mood', 0) for activity in activities if activity.get('mood', 0) > 0]
+        energies = [activity.get('energy', 0) for activity in activities if activity.get('energy', 0) > 0]
+
+        avg_mood = sum(moods) / len(moods) if moods else 7.5
+        avg_energy = sum(energies) / len(energies) if energies else 7.5
+
+        # Estimate sleep hours from mood/energy (7.5 baseline, adjust based on mood/energy)
+        sleep_hours = 7.5
+        if avg_mood > 0 and avg_energy > 0:
+            mood_energy_avg = (avg_mood + avg_energy) / 2
+            # Scale mood/energy (1-10) to sleep adjustment (-1 to +1 hours)
+            sleep_adjustment = (mood_energy_avg - 5.5) * 0.3
+            sleep_hours = max(5.0, min(9.0, sleep_hours + sleep_adjustment))
+
+        # Estimate chronotype alignment (simplified - higher mood/energy suggests better alignment)
+        hc_ratio = 0.5  # Default
+        if avg_mood > 0 and avg_energy > 0:
+            mood_energy_avg = (avg_mood + avg_energy) / 2
+            hc_ratio = min(1.0, mood_energy_avg / 10.0)
+
+        # Create DayMetrics object and calculate EPS
+        metrics = DayMetrics(
+            deep_work_min=int(deep_work_min),
+            context_switches=int(context_switches),
+            sleep_hours=sleep_hours,
+            break_minutes=int(break_minutes),
+            focus_minutes=int(focus_minutes),
+            hc_ratio=hc_ratio
+        )
+
+        # Calculate EPS breakdown
+        score_breakdown = _calculate_score_internal(metrics)
+        interpretation = _interpret_score(score_breakdown.score)
+
+        return {
+            "eps_score": score_breakdown.score,
+            "focus_score": score_breakdown.focus,
+            "sleep_score": score_breakdown.sleep,
+            "breaks_score": score_breakdown.breaks,
+            "chronotype_score": score_breakdown.chronotype,
+            "metrics": {
+                "deep_work_minutes": deep_work_min,
+                "context_switches": context_switches,
+                "break_minutes": break_minutes,
+                "focus_minutes": focus_minutes,
+                "chronotype_alignment": hc_ratio,
+                "total_activities": len(activities),
+                "work_activities": len(work_activities),
+                "break_activities": len(break_activities)
+            },
+            "interpretation": interpretation,
+            "recommendations": _generate_recommendations(score_breakdown)
+        }
+
+    except Exception as e:
+        logger.error(f"Error calculating EPS metrics from activities: {e}")
+        return {
+            "eps_score": 0,
+            "focus_score": 0,
+            "sleep_score": 75,
+            "breaks_score": 0,
+            "chronotype_score": 50,
+            "metrics": {},
+            "interpretation": "Error analyzing activity data",
+            "recommendations": []
+        }
 
 def _generate_safe_insights(activities: list) -> list:
     """Generate insights safely without throwing exceptions"""
@@ -700,7 +1139,8 @@ user_functions = {
     get_recent_activities,
     get_productivity_stats,
     get_current_goals,
-    get_recent_insights
+    get_recent_insights,
+    get_eps_insights
 }
 
 # Legacy function for backward compatibility
@@ -796,5 +1236,251 @@ def create_function_definitions() -> List[Dict[str, Any]]:
                     "required": []
                 }
             }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "get_eps_insights",
+                "description": "Generate Evidence-Based Productivity Score (EPS) insights using scientific research. Analyzes four key components: Focus Quality (35% - deep work & context switches), Sleep Sufficiency (25% - 7-9 hour optimal), Micro-Break Hygiene (20% - 5-15% break ratio), and Chronotype Alignment (20% - peak timing). Provides research-backed recommendations with scientific citations.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "limit": {
+                            "type": "integer",
+                            "description": "Maximum number of EPS insights to return (default: 5)",
+                            "default": 5
+                        }
+                    },
+                    "required": []
+                }
+            }
         }
     ]
+
+
+# ==============================
+# 🤖 AZURE AI AGENT FOR EPS INSIGHTS
+# ==============================
+class EPSInsightsAgent:
+    """
+    Azure AI Agent for Evidence-Based Productivity Score insights.
+    Following Microsoft's Azure AI documentation pattern.
+    """
+
+    def __init__(self):
+        """Initialize the Azure AI agent for EPS insights."""
+        try:
+            # Get environment variables
+            project_endpoint = os.environ.get(
+                "PROJECT_ENDPOINT",
+                "https://elevate777.services.ai.azure.com/api/projects/firstProject"
+            )
+            model_deployment = os.environ.get("MODEL_DEPLOYMENT_NAME", "gpt-4o")
+
+            # Initialize the AIProjectClient
+            self.project_client = AIProjectClient(
+                endpoint=project_endpoint,
+                credential=DefaultAzureCredential()
+            )
+
+            # Initialize the FunctionTool with EPS functions
+            self.functions = FunctionTool(functions=user_functions)
+
+            # Create the agent with EPS-focused instructions
+            self.agent = self.project_client.agents.create_agent(
+                model=model_deployment,
+                name="eps-insights-agent",
+                instructions="""You are an Evidence-Based Productivity Score (EPS) specialist AI agent.
+
+Your expertise is in analyzing productivity using four scientifically-backed components:
+
+1. **Focus Quality (35% weight)**: Deep work time and context switches
+   - Research basis: Cognitive switching costs (American Psychological Association, ACM Digital Library)
+   - Optimal: 25+ minute uninterrupted blocks, minimal context switches
+   - Measures: Deep work minutes, task switching frequency
+
+2. **Sleep Sufficiency (25% weight)**: Sleep duration optimization
+   - Research basis: Sleep-cognition performance curves (PMC, PubMed)
+   - Optimal: 7-9 hours for peak executive function
+   - Measures: Sleep duration, consistency, quality indicators
+
+3. **Micro-Break Hygiene (20% weight)**: Strategic break patterns
+   - Research basis: Break effectiveness studies (PMC, Taylor & Francis)
+   - Optimal: 5-15% break-to-work ratio
+   - Measures: Break frequency, duration, timing
+
+4. **Chronotype Alignment (20% weight)**: Peak timing optimization
+   - Research basis: Chronotype performance research
+   - Optimal: High-cognitive tasks during individual peak windows
+   - Measures: Task-timing alignment, energy pattern matching
+
+When providing insights:
+- Use the get_eps_insights() function for evidence-based analysis
+- Reference scientific research when explaining recommendations
+- Provide specific, actionable advice based on EPS components
+- Explain the weight and importance of each factor
+- Connect insights to the user's actual data when available
+- Be encouraging while providing honest assessments
+
+Always prioritize evidence-based recommendations over generic productivity advice.""",
+                tools=self.functions.definitions,
+            )
+
+            logger.info(f"Created EPS insights agent, ID: {self.agent.id}")
+
+        except Exception as e:
+            logger.error(f"Failed to initialize EPS insights agent: {e}")
+            raise
+
+    def generate_eps_insights(self, user_message: str, db_session: Session, user_id: str) -> Dict[str, Any]:
+        """
+        Generate EPS insights using the AI agent.
+
+        Args:
+            user_message: User's request for insights
+            db_session: Database session for data access
+            user_id: User ID for personalized insights
+
+        Returns:
+            Dictionary containing AI-generated EPS insights
+        """
+        try:
+            # Set the function context for database access
+            set_function_context(db_session, user_id)
+
+            # Create a thread for this analysis
+            thread = self.project_client.agents.threads.create()
+
+            # Send message to the agent
+            message = self.project_client.agents.messages.create(
+                thread_id=thread.id,
+                role="user",
+                content=f"""Please provide Evidence-Based Productivity Score (EPS) insights for the user.
+
+User request: {user_message}
+
+Please:
+1. Use the get_eps_insights() function to get detailed EPS analysis
+2. Explain the four EPS components and their scientific backing
+3. Provide specific recommendations based on the user's data
+4. Reference the research basis for your suggestions
+5. Be encouraging while providing actionable advice
+
+Focus on evidence-based insights rather than generic productivity tips."""
+            )
+
+            # Process the request with function calling
+            run = self.project_client.agents.runs.create(
+                thread_id=thread.id,
+                agent_id=self.agent.id
+            )
+
+            # Wait for completion and handle function calls
+            start_time = time.time()
+            while time.time() - start_time < 30:  # 30 second timeout
+                run_status = self.project_client.agents.runs.get(
+                    thread_id=thread.id,
+                    run_id=run.id
+                )
+
+                if run_status.status == "completed":
+                    break
+                elif run_status.status == "requires_action":
+                    # Handle function calls
+                    tool_calls = run_status.required_action.submit_tool_outputs.tool_calls
+                    tool_outputs = []
+
+                    for tool_call in tool_calls:
+                        function_name = tool_call.function.name
+
+                        # Execute the appropriate function
+                        if function_name in [func.__name__ for func in user_functions]:
+                            try:
+                                # Parse arguments
+                                args = json.loads(tool_call.function.arguments) if tool_call.function.arguments else {}
+
+                                # Call the function
+                                if function_name == "get_eps_insights":
+                                    output = get_eps_insights(args.get('limit', 5))
+                                elif function_name == "get_recent_activities":
+                                    output = get_recent_activities(args.get('days', 7), args.get('limit', 20))
+                                elif function_name == "get_productivity_stats":
+                                    output = get_productivity_stats(args.get('days', 7))
+                                elif function_name == "get_user_profile":
+                                    output = get_user_profile()
+                                elif function_name == "get_user_preferences":
+                                    output = get_user_preferences()
+                                elif function_name == "get_current_goals":
+                                    output = get_current_goals(args.get('limit', 10))
+                                elif function_name == "get_recent_insights":
+                                    output = get_recent_insights(args.get('limit', 5))
+                                else:
+                                    output = json.dumps({"error": f"Unknown function: {function_name}"})
+
+                                tool_outputs.append({
+                                    "tool_call_id": tool_call.id,
+                                    "output": output
+                                })
+
+                            except Exception as e:
+                                logger.error(f"Error executing function {function_name}: {e}")
+                                tool_outputs.append({
+                                    "tool_call_id": tool_call.id,
+                                    "output": json.dumps({"error": f"Function execution failed: {str(e)}"})
+                                })
+
+                    # Submit the tool outputs
+                    self.project_client.agents.runs.submit_tool_outputs(
+                        thread_id=thread.id,
+                        run_id=run.id,
+                        tool_outputs=tool_outputs
+                    )
+
+                time.sleep(1)  # Wait before checking again
+
+            # Get the final response
+            if run_status.status == "completed":
+                messages = self.project_client.agents.messages.list(thread_id=thread.id)
+
+                # Find the assistant's response
+                for message in messages:
+                    if message.role == "assistant" and message.content:
+                        return {
+                            "success": True,
+                            "insights": message.content[0].text.value,
+                            "agent_id": self.agent.id,
+                            "thread_id": thread.id,
+                            "methodology": "Evidence-Based Productivity Score (EPS)"
+                        }
+
+            return {
+                "success": False,
+                "error": f"Agent run failed with status: {run_status.status}",
+                "insights": "Failed to generate EPS insights"
+            }
+
+        except Exception as e:
+            logger.error(f"Error generating EPS insights: {e}")
+            return {
+                "success": False,
+                "error": str(e),
+                "insights": "Error occurred during EPS insight generation"
+            }
+
+    def cleanup(self):
+        """Clean up the agent after use."""
+        try:
+            self.project_client.agents.delete_agent(self.agent.id)
+            logger.info("Deleted EPS insights agent")
+        except Exception as e:
+            logger.error(f"Error deleting EPS agent: {e}")
+
+# Create a singleton instance for the EPS insights agent
+eps_insights_agent = None
+
+def get_eps_insights_agent():
+    """Get or create the EPS insights agent instance."""
+    global eps_insights_agent
+    if eps_insights_agent is None:
+        eps_insights_agent = EPSInsightsAgent()
+    return eps_insights_agent

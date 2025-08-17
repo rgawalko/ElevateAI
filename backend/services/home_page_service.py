@@ -15,6 +15,7 @@ from models.user import User
 from models.activity_log import ActivityLog
 from models.goal import Goal
 from database.database import SessionLocal
+from ProductivityScore import _calculate_score_internal, DayMetrics
 
 logger = logging.getLogger(__name__)
 
@@ -310,8 +311,86 @@ class HomePageService:
         return insights
     
     def _calculate_productivity_score(self, user_id: str, week_start: datetime.date) -> float:
-        """Calculate a productivity score based on activities, mood, and energy"""
+        """Calculate a sophisticated productivity score using EPS algorithm"""
+        try:
+            # Get activities for the week
+            activities = self.db.query(ActivityLog).filter(
+                ActivityLog.user_id == user_id,
+                func.date(ActivityLog.date) >= week_start
+            ).all()
 
+            if not activities:
+                return 5.0  # Default score when no data
+
+            # Extract metrics from activities
+            total_duration = sum(act.duration_minutes for act in activities if act.duration_minutes)
+
+            # Calculate deep work time (activities >= 25 minutes)
+            deep_work_min = sum(
+                act.duration_minutes for act in activities
+                if act.duration_minutes and act.duration_minutes >= 25
+            )
+
+            # Estimate context switches based on activity variety per day
+            daily_activities = {}
+            for act in activities:
+                day = act.date.date() if hasattr(act.date, 'date') else act.date
+                if day not in daily_activities:
+                    daily_activities[day] = set()
+                daily_activities[day].add(act.activity_name.lower())
+
+            # Average context switches per day
+            avg_context_switches = sum(
+                max(0, len(day_acts) - 1) for day_acts in daily_activities.values()
+            ) / max(1, len(daily_activities))
+
+            # Use average mood and energy for sleep estimation
+            avg_mood = self._calculate_avg_mood(user_id, week_start)
+            avg_energy = self._calculate_avg_energy(user_id, week_start)
+
+            # Estimate sleep quality from mood/energy (7.5 baseline, adjust based on mood/energy)
+            sleep_hours = 7.5
+            if avg_mood > 0 and avg_energy > 0:
+                mood_energy_avg = (avg_mood + avg_energy) / 2
+                # Scale mood/energy (1-10) to sleep adjustment (-1 to +1 hours)
+                sleep_adjustment = (mood_energy_avg - 5.5) * 0.3
+                sleep_hours = max(5.0, min(9.0, sleep_hours + sleep_adjustment))
+
+            # Estimate break time (assume 10% of total time as breaks)
+            break_minutes = int(total_duration * 0.1)
+
+            # Focus time is total duration minus breaks
+            focus_minutes = max(1, total_duration - break_minutes)
+
+            # Estimate chronotype alignment (simplified - higher mood/energy suggests better alignment)
+            hc_ratio = 0.5  # Default
+            if avg_mood > 0 and avg_energy > 0:
+                mood_energy_avg = (avg_mood + avg_energy) / 2
+                hc_ratio = min(1.0, mood_energy_avg / 10.0)
+
+            # Create DayMetrics object
+            metrics = DayMetrics(
+                deep_work_min=int(deep_work_min),
+                context_switches=int(avg_context_switches),
+                sleep_hours=sleep_hours,
+                break_minutes=break_minutes,
+                focus_minutes=focus_minutes,
+                hc_ratio=hc_ratio
+            )
+
+            # Calculate sophisticated score
+            score_breakdown = _calculate_score_internal(metrics)
+
+            # Convert 0-100 scale to 0-10 scale for consistency with existing UI
+            return round(score_breakdown.score / 10.0, 1)
+
+        except Exception as e:
+            logger.error(f"Error calculating sophisticated productivity score: {e}")
+            # Fallback to simple calculation
+            return self._calculate_simple_productivity_score(user_id, week_start)
+
+    def _calculate_simple_productivity_score(self, user_id: str, week_start: datetime.date) -> float:
+        """Fallback simple productivity calculation"""
         # Use the helper methods to get averages
         avg_mood = self._calculate_avg_mood(user_id, week_start)
         avg_energy = self._calculate_avg_energy(user_id, week_start)

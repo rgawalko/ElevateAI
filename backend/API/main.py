@@ -27,6 +27,7 @@ from routes import (
     home_router,
     test_router
 )
+from ProductivityScore import router as productivity_router
 
 # Configure logging
 logging.basicConfig(
@@ -157,6 +158,7 @@ app.include_router(schedules_router, prefix="/api")
 app.include_router(insights_router, prefix="/api")
 app.include_router(goals_router, prefix="/api")
 app.include_router(chronotype_router, prefix="/api")
+app.include_router(productivity_router, prefix="/api/productivity")
 app.include_router(chatbot_router)
 app.include_router(home_router)
 app.include_router(test_router, prefix="/api")

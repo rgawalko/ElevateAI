@@ -16,6 +16,7 @@ from .activity_service import ActivityService
 from .user_service import UserService
 from .azure_openai_service import azure_openai_service
 from models import Schedule, ActivityLog, AIInsight, UserPreferences
+from ProductivityScore import _calculate_score_internal, DayMetrics, get_productivity_agent
 
 
 class AIService(BaseService):
@@ -237,6 +238,10 @@ class AIService(BaseService):
             ratio = break_time / work_time * 100
             recommendations.append(f"Work-life balance optimized with {ratio:.0f}% break-to-work ratio")
 
+        # Calculate detailed productivity metrics for enhanced reporting
+        productivity_score = self._calculate_productivity_score(scheduled_activities)
+        productivity_details = self._get_productivity_score_details(scheduled_activities)
+
         return {
             "date": request_data["date"],
             "totalDuration": total_duration,
@@ -247,35 +252,92 @@ class AIService(BaseService):
                 "totalWorkTime": work_time,
                 "totalBreakTime": break_time,
                 "totalFreeTime": max(0, 8 * 60 - total_duration),
-                "productivityScore": self._calculate_productivity_score(scheduled_activities),
+                "productivityScore": productivity_score,
                 "balanceScore": self._calculate_balance_score(work_time, break_time),
-                "recommendations": recommendations
+                "recommendations": recommendations,
+                "productivityBreakdown": productivity_details  # Add detailed EPS breakdown
             },
             "optimizationDetails": {
                 "priorityOptimization": "High-priority tasks scheduled first for optimal productivity",
                 "breakOptimization": f"Added {len(breaks)} strategic breaks to maintain energy",
                 "timeWindowRespected": "All time constraints and preferences were respected",
-                "workLifeBalance": f"Achieved {break_time / max(work_time, 1) * 100:.0f}% break-to-work balance ratio"
+                "workLifeBalance": f"Achieved {break_time / max(work_time, 1) * 100:.0f}% break-to-work balance ratio",
+                "productivityOptimization": f"Evidence-based Productivity Score (EPS): {productivity_score}/100 - {productivity_details.get('interpretation', 'Optimized for peak performance')}"
             }
         }
     
     def _calculate_productivity_score(self, activities: List[Dict[str, Any]]) -> int:
         """
-        Calculate productivity score based on schedule optimization.
+        Calculate productivity score using sophisticated EPS algorithm.
         """
-        # Simple scoring algorithm (can be enhanced with ML)
+        try:
+            # Extract metrics from activities for sophisticated scoring
+            work_activities = [act for act in activities if act.get("category") != "break"]
+            breaks = [act for act in activities if act.get("category") == "break"]
+
+            # Calculate deep work time (activities >= 25 minutes)
+            deep_work_min = sum(
+                act["durationMinutes"] for act in work_activities
+                if act["durationMinutes"] >= 25
+            )
+
+            # Estimate context switches (simplified - based on number of different activity types)
+            activity_types = set(act.get("name", "").lower() for act in work_activities)
+            context_switches = max(0, len(activity_types) - 1)  # Subtract 1 as first activity doesn't count as switch
+
+            # Default sleep hours (could be enhanced with user data)
+            sleep_hours = 7.5  # Default optimal sleep
+
+            # Calculate break time
+            break_minutes = sum(act["durationMinutes"] for act in breaks)
+
+            # Calculate total focus time
+            focus_minutes = sum(act["durationMinutes"] for act in work_activities)
+            if focus_minutes == 0:
+                focus_minutes = 1  # Avoid division by zero
+
+            # Estimate chronotype alignment (simplified - assume high-priority tasks in morning are better)
+            high_priority_early = sum(
+                1 for i, act in enumerate(work_activities[:3])  # First 3 activities
+                if act.get("priority", 3) <= 2
+            )
+            hc_ratio = min(1.0, high_priority_early / 3.0) if work_activities else 0.5
+
+            # Create DayMetrics object
+            metrics = DayMetrics(
+                deep_work_min=deep_work_min,
+                context_switches=context_switches,
+                sleep_hours=sleep_hours,
+                break_minutes=break_minutes,
+                focus_minutes=focus_minutes,
+                hc_ratio=hc_ratio
+            )
+
+            # Calculate sophisticated score
+            score_breakdown = _calculate_score_internal(metrics)
+            return int(score_breakdown.score)
+
+        except Exception as e:
+            self.logger.error(f"Error calculating sophisticated productivity score: {e}")
+            # Fallback to simple scoring
+            return self._calculate_simple_productivity_score(activities)
+
+    def _calculate_simple_productivity_score(self, activities: List[Dict[str, Any]]) -> int:
+        """
+        Fallback simple productivity scoring algorithm.
+        """
         score = 70  # Base score
-        
+
         # Bonus for proper break distribution
         breaks = [act for act in activities if act.get("category") == "break"]
         if len(breaks) >= 2:
             score += 10
-        
+
         # Bonus for high-priority tasks scheduled early
         work_activities = [act for act in activities if act.get("category") != "break"]
         if work_activities and work_activities[0]["priority"] <= 2:
             score += 10
-        
+
         # Penalty for too many consecutive work blocks
         consecutive_work_blocks = 0
         for i, act in enumerate(activities):
@@ -285,9 +347,84 @@ class AIService(BaseService):
                 if consecutive_work_blocks > 3:
                     score -= 5
                 consecutive_work_blocks = 0
-        
+
         return min(100, max(0, score))
-    
+
+    def _get_productivity_score_details(self, activities: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """
+        Get detailed breakdown of the productivity score using EPS algorithm.
+        """
+        try:
+            # Extract metrics from activities for sophisticated scoring
+            work_activities = [act for act in activities if act.get("category") != "break"]
+            breaks = [act for act in activities if act.get("category") == "break"]
+
+            # Calculate deep work time (activities >= 25 minutes)
+            deep_work_min = sum(
+                act["durationMinutes"] for act in work_activities
+                if act["durationMinutes"] >= 25
+            )
+
+            # Estimate context switches (simplified - based on number of different activity types)
+            activity_types = set(act.get("name", "").lower() for act in work_activities)
+            context_switches = max(0, len(activity_types) - 1)
+
+            # Default sleep hours (could be enhanced with user data)
+            sleep_hours = 7.5  # Default optimal sleep
+
+            # Calculate break time
+            break_minutes = sum(act["durationMinutes"] for act in breaks)
+
+            # Calculate total focus time
+            focus_minutes = sum(act["durationMinutes"] for act in work_activities)
+            if focus_minutes == 0:
+                focus_minutes = 1  # Avoid division by zero
+
+            # Estimate chronotype alignment (simplified - assume high-priority tasks in morning are better)
+            high_priority_early = sum(
+                1 for act in work_activities[:3]  # First 3 activities
+                if act.get("priority", 3) <= 2
+            )
+            hc_ratio = min(1.0, high_priority_early / 3.0) if work_activities else 0.5
+
+            # Create DayMetrics object
+            metrics = DayMetrics(
+                deep_work_min=deep_work_min,
+                context_switches=context_switches,
+                sleep_hours=sleep_hours,
+                break_minutes=break_minutes,
+                focus_minutes=focus_minutes,
+                hc_ratio=hc_ratio
+            )
+
+            # Calculate sophisticated score breakdown
+            from ProductivityScore import _interpret_score, _generate_recommendations
+            score_breakdown = _calculate_score_internal(metrics)
+
+            return {
+                "focus_score": score_breakdown.focus,
+                "sleep_score": score_breakdown.sleep,
+                "breaks_score": score_breakdown.breaks,
+                "chronotype_score": score_breakdown.chronotype,
+                "overall_score": score_breakdown.score,
+                "interpretation": _interpret_score(score_breakdown.score),
+                "recommendations": _generate_recommendations(score_breakdown),
+                "metrics": {
+                    "deep_work_minutes": deep_work_min,
+                    "context_switches": context_switches,
+                    "break_minutes": break_minutes,
+                    "focus_minutes": focus_minutes,
+                    "chronotype_alignment": hc_ratio
+                }
+            }
+
+        except Exception as e:
+            self.logger.error(f"Error getting productivity score details: {e}")
+            return {
+                "interpretation": "Productivity analysis unavailable",
+                "recommendations": []
+            }
+
     def _calculate_balance_score(self, work_time: int, break_time: int) -> int:
         """
         Calculate work-life balance score.
